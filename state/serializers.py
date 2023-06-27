@@ -28,7 +28,7 @@ class UserListSerializers(serializers.ModelSerializer):
     def get_group(self, obj):
         if isinstance(obj, USER):
             string = obj.Class
-            return str(int(int(string / 1000) % 10))
+            return str(int(int(string / 100) % 10))
         return None
 
     def get_number(self, obj):

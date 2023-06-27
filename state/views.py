@@ -84,54 +84,49 @@ class TeaChange(APIView):
 
 class List(APIView):
     def get(self, request):
-        accessToken = request.META.get('HTTP_AUTHORIZATION')
-        if verify_jwt(accessToken):
-            user_list = USER.objects.filter(Q(is_superuser=False) & Q(T_bool=False))
+        user_list = USER.objects.filter(Q(is_superuser=False) & Q(T_bool=False))
 
+        try:
+            grade = request.query_params['grade']
+            grade = int(grade) * 1000
+            grade_user = USER.objects.filter(Q(Class__gte=grade) and Q(Class__lte=grade + 999))
+            user_list = user_list.intersection(grade_user)
+        except Exception:
+            pass
+
+        try:
+            group = request.query_params['group']
+            group = int(group)
+            group_user = USER.objects.filter(Class__regex=r'^\d' + str(group) + '\d{2}$')
+            user_list = user_list.intersection(group_user)
+        except Exception:
+            pass
+
+        try:
+            name = request.query_params['name']
+            name_user = USER.objects.filter(name__contains=name)
+            user_list = user_list.intersection(name_user)
+        except Exception:
+            pass
+
+        try:
+            states = request.query_params['state']
+            check = 1
+        except Exception:
+            check = 0
+
+        serializer = []
+
+        for user in user_list.order_by('id'):
             try:
-                grade = request.query_params['grade']
-                grade = int(grade) * 1000
-                grade_user = USER.objects.filter(Q(Class__gte=grade) and Q(Class__lte=grade + 999))
-                user_list = user_list.intersection(grade_user)
+                state = STATE.objects.get(Q(user=user) & Q(date=date.today()))
             except Exception:
-                pass
-
-            try:
-                group = request.query_params['group']
-                group = int(group)
-                group_user = USER.objects.filter(Class__regex=r'^\d' + str(group) + '\d{2}$')
-                user_list = user_list.intersection(group_user)
-            except Exception:
-                pass
-
-            try:
-                name = request.query_params['name']
-                name_user = USER.objects.filter(name__contains=name)
-                user_list = user_list.intersection(name_user)
-            except Exception:
-                pass
-
-            try:
-                states = request.query_params['state']
-                check = 1
-            except Exception:
-                check = 0
-
-            serializer = []
-
-            for user in user_list:
-                try:
-                    state = STATE.objects.get(Q(user=user) & Q(date=date.today()))
-                except Exception:
-                    state = STATE.objects.filter(user=user).order_by('id')[0]
-                if check:
-                    if state.where == states:
-                        serializer.append(state)
-                else:
+                state = STATE.objects.filter(user=user).order_by('id')[0]
+            if check:
+                if state.where == states:
                     serializer.append(state)
+            else:
+                serializer.append(state)
 
-            serializer = ListSerializers(serializer, many=True)
-            return Response(serializer.data)
-        return Response({
-            "message": "유효하지 않은 토큰입니다."
-        }, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ListSerializers(serializer, many=True)
+        return Response(serializer.data)
