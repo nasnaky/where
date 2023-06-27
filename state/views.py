@@ -89,7 +89,7 @@ class List(APIView):
         try:
             grade = request.query_params['grade']
             grade = int(grade) * 1000
-            grade_user = USER.objects.filter(Q(Class__gte=grade) and Q(Class__lte=grade + 999))
+            grade_user = USER.objects.filter(Q(Class__gte=grade) & Q(Class__lte=grade + 999))
             user_list = user_list.intersection(grade_user)
         except Exception:
             pass
